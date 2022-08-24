@@ -1,10 +1,182 @@
+import { environment } from './../environments/environment';
 import { Component } from '@angular/core';
+
+declare var google: any;
+declare var gapi: any;
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
   title = 'google-gsi-angular-app';
+  private oauth2Client: any;
+  private GOOGLE_CLIENT_ID = environment.google_client_id;
+  private GOOGLE_CLIENT_SECRET_KEY = environment.google_client_secret;
+  private GOOGLE_SCOPE = environment.google_scope;
+
+  constructor() {
+    console.log(environment.production);
+  }
+
+  ngAfterViewInit() {
+    this.googleGAPIInit();
+    this.googleOAuth2TokenInit();
+  }
+
+  /**
+   * Reference: https://developers.google.com/identity/oauth2/web/guides/migration-to-gis#gapi-callback
+   */
+  public googleGAPIInit() {
+    gapi.load('client', () => {});
+  }
+
+  // Google OAuth2 Implicit Flow
+  public googleOAuth2TokenInit() {
+    console.log('googleOAuth2TokenInit');
+    this.oauth2Client = google.accounts.oauth2.initTokenClient({
+      client_id: this.GOOGLE_CLIENT_ID,
+      scope: this.GOOGLE_SCOPE,
+      callback: '', // Leave blank for set up at handleSignIn()
+    });
+  }
+
+  public handleSignIn() {
+    console.log('handleSignIn');
+    this.oauth2Client.callback = (response: any) => {
+      if (response.error !== undefined) {
+        throw response;
+      }
+
+      // GIS has automatically updated gapi.client with the newly issued access token.
+      console.log(
+        'gapi.client access token: ' + JSON.stringify(gapi.client.getToken())
+      );
+
+      let credential = gapi.client.getToken();
+
+      // Get user profile
+      // Use xhr() instead to avoid CORS issue
+      // You can use httpClient when deploying to production
+      var xhr = new XMLHttpRequest();
+      xhr.addEventListener('readystatechange', function () {
+        if (this.readyState === 4) {
+          console.log(this.responseText);
+        }
+      });
+      xhr.open('GET', 'https://www.googleapis.com/oauth2/v2/userinfo');
+      xhr.setRequestHeader(
+        'Authorization',
+        `Bearer ${credential.access_token}`
+      );
+      xhr.send();
+    };
+
+    // Conditionally ask users to select the Google Account they'd like to use
+    // NOTE: To request an access token a user gesture is necessary.
+    if (gapi.client.getToken() === null) {
+      // Prompt the user to select an Google Account and asked for consent to share their data
+      // when establishing a new session.
+      this.oauth2Client.requestAccessToken({ prompt: 'consent' });
+    } else {
+      // Skip display of account chooser and consent dialog for an existing session.
+      this.oauth2Client.requestAccessToken({ prompt: '' });
+    }
+  }
+
+  public handleSignOut() {
+    console.log('handleSignOut');
+    // Get the current access token from gapi.client
+    let credential = gapi.client.getToken();
+    if (credential !== null) {
+      // Clear the current access token
+      google.accounts.oauth2.revoke(credential.access_token, () => {
+        console.log('Revoked: ' + credential.access_token);
+      });
+      // Clear gapi.client token
+      gapi.client.setToken('');
+    }
+  }
+
+  //// Google Single Sign On
+  // public googleSignInInit() {
+  //   console.log('googleGSIInit');
+  //   google.accounts.id.initialize({
+  //     client_id: this.GOOGLE_CLIENT_ID,
+  //     callback: this.onGoogleSignInResponse,
+  //   });
+
+  //   google.accounts.id.prompt((notification: any) => {
+  //     if (notification.isNotDisplayed()) {
+  //       console.log('User has already granted permission');
+  //     } else if (notification.isSkippedMoment()) {
+  //       console.log('User has already granted permission');
+  //     }
+  //   });
+
+  //   google.accounts.id.renderButton(
+  //     document.getElementById('google-signin-button'),
+  //     {
+  //       theme: 'filled_blue',
+  //       size: 'large',
+  //       width: 250,
+  //     }
+  //   );
+  // }
+
+  // public onGoogleSignInResponse(response: any) {
+  //   console.log('onGoogleSignInResponse');
+  //   console.log(response);
+  //   if (response.credential) {
+  //     console.log('User has granted permission');
+  //     console.log(response.credential);
+  //   } else {
+  //     console.log('User has not granted permission');
+  //   }
+  // }
+
+  // // Google OAuth2 Code Flow
+  // public googleOAuth2CodeInit() {
+  //   console.log('googleOAuth2CodeInit');
+  //   this.oauth2Client = google.accounts.oauth2.initCodeClient({
+  //     client_id: this.GOOGLE_CLIENT_ID,
+  //     ux_mode: 'popup',
+  //     scope: this.GOOGLE_SCOPE,
+  //     redirect_uri: 'http://localhost:4200',
+  //     callback: this.onGoogleOAuth2CodeResponse,
+  //   });
+  // }
+
+  // public onGoogleOAuth2CodeResponse(response: any) {
+  //   console.log('onGoogleOAuth2CodeResponse');
+  //   console.log(response);
+  //   if (response.code) {
+  //     console.log('User has granted permission');
+  //     console.log(response.code);
+  //   } else {
+  //     console.log('User has not granted permission');
+  //   }
+  // }
+
+  // public onGoogleOAuth2TokenResponse(response: any) {
+  //   console.log('onGoogleOAuth2TokenResponse');
+  //   console.log(response);
+  //   if (response.access_token) {
+  //     console.log('User has granted permission');
+  //     console.log(response.access_token);
+  //   } else {
+  //     console.log('User has not granted permission');
+  //   }
+  // }
+
+  // public handleRequestOAuth2AccessToken() {
+  //   console.log('handleGetTokenInfo');
+  //   this.oauth2Client.requestAccessToken();
+  // }
+
+  // public handleRequestOAuth2Code() {
+  //   console.log('handleRequestOAuth2Code');
+  //   this.oauth2Client.requestCode();
+  // }
 }
