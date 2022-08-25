@@ -62,18 +62,18 @@ export class AppComponent {
       console.log(
         'gapi.client access token: ' + JSON.stringify(gapi.client.getToken())
       );
-
       let credential = gapi.client.getToken();
 
       // Get user profile
       // Use xhr() instead to avoid CORS issue
       // You can use httpClient when deploying to production
-      var xhr = new XMLHttpRequest();
-      xhr.addEventListener('readystatechange', function () {
-        if (this.readyState === 4) {
-          console.log(this.responseText);
+      let xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          let userProfile = JSON.parse(xhr.responseText);
+          this.signinCallback(userProfile);
         }
-      });
+      };
       xhr.open('GET', 'https://www.googleapis.com/oauth2/v2/userinfo');
       xhr.setRequestHeader(
         'Authorization',
@@ -99,6 +99,39 @@ export class AppComponent {
       // Clear gapi.client token
       gapi.client.setToken('');
     }
+  }
+
+  private signinCallback(user: any) {
+    console.log(user);
+    // let currentComponentObject = this;
+    // //clear error message
+    // currentComponentObject.loginModel.Message = '';
+    // currentComponentObject.loginModel.errorMessage = '';
+    // console.log('profile: ' + profile);
+    // if (profile) {
+    //   let user = profile.name;
+    //   let email = profile.email;
+    //   if (email && email.split('@').length > 0) {
+    //     let domain = profile.email.split('@')[1];
+    //     if (domain.toLowerCase() == Constants.EMAIL_DOMAIN) {
+    //       currentComponentObject.loginModel.Email = email;
+    //       this.ngZone.run(() => {
+    //         //login
+    //         currentComponentObject.login(user, true);
+    //       });
+    //     } else {
+    //       this.ngZone.run(() => {
+    //         if (google.accounts.auth2) {
+    //           let auth2 = google.accounts.auth2.getAuthInstance();
+    //           auth2.disconnect();
+    //           auth2.signOut();
+    //         }
+    //         currentComponentObject.loginModel.errorMessage =
+    //           'User is not allowed to sign in with google.';
+    //       });
+    //     }
+    //   }
+    // }
   }
 
   //// Google Single Sign On
