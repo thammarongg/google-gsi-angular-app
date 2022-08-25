@@ -11,13 +11,20 @@ declare var gapi: any;
 })
 export class AppComponent {
   title = 'google-gsi-angular-app';
-  private oauth2Client: any;
+  private auth2: any;
   private GOOGLE_CLIENT_ID = environment.google_client_id;
   private GOOGLE_CLIENT_SECRET_KEY = environment.google_client_secret;
   private GOOGLE_SCOPE = environment.google_scope;
 
   constructor() {
     console.log(environment.production);
+  }
+
+  ngOnInit() {
+    if (google.accounts.auth2) {
+      let auth2 = google.accounts.auth2.getAuthInstance();
+      auth2.disconnect();
+    }
   }
 
   ngAfterViewInit() {
@@ -35,16 +42,18 @@ export class AppComponent {
   // Google OAuth2 Implicit Flow
   public googleOAuth2TokenInit() {
     console.log('googleOAuth2TokenInit');
-    this.oauth2Client = google.accounts.oauth2.initTokenClient({
+    this.auth2 = google.accounts.oauth2.initTokenClient({
       client_id: this.GOOGLE_CLIENT_ID,
+      cookiepolicy: 'single_host_origin',
       scope: this.GOOGLE_SCOPE,
+      hd: 'siamintec.co.th',
       callback: '', // Leave blank for set up at handleSignIn()
     });
   }
 
-  public handleSignIn() {
+  public authenticateGoogle() {
     console.log('handleSignIn');
-    this.oauth2Client.callback = (response: any) => {
+    this.auth2.callback = (response: any) => {
       if (response.error !== undefined) {
         throw response;
       }
@@ -73,15 +82,8 @@ export class AppComponent {
       xhr.send();
     };
 
-    // Conditionally ask users to select the Google Account they'd like to use
-    // NOTE: To request an access token a user gesture is necessary.
     if (gapi.client.getToken() === null) {
-      // Prompt the user to select an Google Account and asked for consent to share their data
-      // when establishing a new session.
-      this.oauth2Client.requestAccessToken({ prompt: 'consent' });
-    } else {
-      // Skip display of account chooser and consent dialog for an existing session.
-      this.oauth2Client.requestAccessToken({ prompt: '' });
+      this.auth2.requestAccessToken();
     }
   }
 
